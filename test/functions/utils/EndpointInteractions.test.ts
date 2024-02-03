@@ -1,6 +1,6 @@
 import axios, {AxiosRequestConfig} from 'axios';
 import * as EndpointInteractions from '../../../src/functions/utils/EndpointInteractions';
-import {IDiscordEndpointInfo} from '../../../src/types';
+import {IDiscordEndpointInfo, IDiscordResponseData} from '../../../src/types';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -11,9 +11,13 @@ describe('Test EndpointInteractions', () => {
     applicationId: 'appid',
   };
   const token = 'token';
-  const responseData = {
+  const responseData:IDiscordResponseData = {
     content: 'testing',
-    allowedMentions: [],
+    allowedMentions: {
+      users: [],
+      parse: [],
+      roles: []
+    },
     embeds: [],
     tts: false,
   };

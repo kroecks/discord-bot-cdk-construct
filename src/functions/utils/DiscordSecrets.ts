@@ -2,6 +2,8 @@ import {SecretsManager} from 'aws-sdk';
 import {IDiscordSecrets} from '../../types';
 import {discordBotAPIKeyName} from '../constants/EnvironmentProps';
 
+import { logger } from '../common/powertools';
+
 const secretsManager = new SecretsManager();
 
 /**
@@ -17,14 +19,17 @@ let __discordSecrets: IDiscordSecrets | undefined = undefined;
 export async function getDiscordSecrets(): Promise<IDiscordSecrets | undefined> {
   if (!__discordSecrets) {
     try {
+      logger.info(`Trying to read secret ${discordBotAPIKeyName}`);
+
       const discordApiKeys = await secretsManager.getSecretValue({
         SecretId: discordBotAPIKeyName,
       }).promise();
       if (discordApiKeys.SecretString) {
+        logger.info(`Trying to read secret ${discordBotAPIKeyName} string as json: ${discordApiKeys.SecretString}`)
         __discordSecrets = JSON.parse(discordApiKeys.SecretString);
       }
     } catch (exception) {
-      console.log(`Unable to get Discord secrets: ${exception}`);
+      logger.error(`Unable to get Discord secrets: ${exception}`);
     }
   }
   return __discordSecrets;

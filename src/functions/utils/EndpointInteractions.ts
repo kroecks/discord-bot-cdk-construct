@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {IDiscordEndpointInfo, IDiscordResponseData} from '../../types';
+import {logger} from "../common/powertools";
 
 /**
  * Send a followup message to Discord's APIs on behalf of the bot.
@@ -26,6 +27,7 @@ export async function sendFollowupMessage(endpointInfo: IDiscordEndpointInfo,
     const url = `https://discord.com/api/v${
       endpointInfo.apiVersion ?? '10'
     }/webhooks/${endpointInfo.applicationId}/${interactionToken}`;
+    logger.info(`SendingResponse DEBUG to url=${url}`);
     return (await axios.post(url, data, authConfig)).status == 200;
   } catch (exception) {
     console.log(`There was an error posting a response: ${exception}`);

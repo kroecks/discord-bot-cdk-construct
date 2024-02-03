@@ -13,6 +13,12 @@ export interface IDiscordSecrets {
   botToken: string;
 }
 
+export interface IPalServerDetails {
+  accessKey: string;
+  secretKey: string;
+  instanceId: string;
+}
+
 /**
  * A server role assigned to a user.
  */
@@ -31,6 +37,7 @@ export interface IDiscordMember {
   deaf: boolean;
   roles: string[];
   user: IDiscordUser;
+  nick?: string;
 }
 
 /**
@@ -39,6 +46,7 @@ export interface IDiscordMember {
 export interface IDiscordUser {
   id: number;
   username: string;
+  global_name: string;
   discriminator: string;
 }
 
@@ -92,9 +100,15 @@ export interface IDiscordEndpointInfo {
   /** The API version to use for the endpoint (10 is the default when not specified) */
   apiVersion?: string;
   /** The bot token to use when accessing this endpoint */
-  botToken: string;
+  botToken?: string;
   /** The application ID for this bot */
-  applicationId: string;
+  applicationId?: string;
+}
+
+export interface IAllowedMentions {
+  parse: string[];
+  roles: string[];
+  users: string[];
 }
 
 /**
@@ -104,6 +118,6 @@ export interface IDiscordResponseData {
   tts: boolean;
   content: string;
   embeds: any[];
-  allowedMentions: string[];
+  allowedMentions: IAllowedMentions;
 }
 

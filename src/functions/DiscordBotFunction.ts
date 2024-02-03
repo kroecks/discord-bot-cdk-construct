@@ -1,22 +1,35 @@
-import {Context, Callback} from 'aws-lambda';
-import {IDiscordEventRequest} from '../types';
+import {Context, Callback, APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
+import {IDiscordEventRequest, IDiscordJsonBody} from '../types';
 import {getDiscordSecrets} from './utils/DiscordSecrets';
 import {Lambda} from 'aws-sdk';
 import {commandLambdaARN} from './constants/EnvironmentProps';
 import {sign} from 'tweetnacl';
 
+import { logger } from './common/powertools';
+
 const lambda = new Lambda();
+
+const SERVER_ROLE = "1203108322551664690";
+
+function isValidPlayer(event: IDiscordEventRequest) {
+
+  if (event.jsonBody.member && event.jsonBody.member.roles.includes(SERVER_ROLE)) {
+    return true;
+  }
+
+  return false;
+}
 
 /**
  * Handles incoming events from the Discord bot.
  * @param {IDiscordEventRequest} event The incoming request to handle.
- * @param {Context} _context The context this request was called with.
- * @param {Callback} _callback A callback to handle the request.
+ * @param {Context} context The context this request was called with.
+ * @param {Callback} callback A callback to handle the request.
  * @return {IDiscordEventResponse} Returns a response to send back to Discord.
  */
 export async function handler(event: IDiscordEventRequest, _context: Context,
     _callback: Callback) {
-  console.log(`Received event: ${JSON.stringify(event)}`);
+  logger.info(`Received event: ${JSON.stringify(event)}`);
 
   const verifyPromise = verifyEvent(event);
 
@@ -31,15 +44,28 @@ export async function handler(event: IDiscordEventRequest, _context: Context,
         }
         break;
       case 2:
+        var eventPayload = JSON.stringify({
+          ...event,
+          // Hacky workaround due to https://github.com/aws/jsii/issues/3468
+          guildId: (event.jsonBody.data as any)?['guild_id'] : undefined,
+          targetId: (event.jsonBody.data as any)?['target_id'] : undefined,
+        });
+
+        if (!isValidPlayer(event)) {
+          logger.info("Non-valid player calling!");
+          return {
+            type: 4,
+            data: {
+              content: `You're not a Pal Trainer, ${(event.jsonBody.member ? event.jsonBody.member.user.global_name : "INSERT_PEASANT_NAME")}`
+            }
+          }
+        }
+
+        logger.info(`Attempting to call command lambda! ARN=${commandLambdaARN} Payload=${eventPayload}`);
         // Invoke the lambda to respond to the deferred message.
         const lambdaPromise = lambda.invoke({
           FunctionName: commandLambdaARN,
-          Payload: JSON.stringify({
-            ...event,
-            // Hacky workaround due to https://github.com/aws/jsii/issues/3468
-            guildId: (event.jsonBody.data as any)?['guild_id'] : undefined,
-            targetId: (event.jsonBody.data as any)?['target_id'] : undefined,
-          }),
+          Payload: eventPayload,
           InvocationType: 'Event',
         }).promise();
 
@@ -47,10 +73,24 @@ export async function handler(event: IDiscordEventRequest, _context: Context,
         // Note that all responses are deferred to meet Discord's 3 second
         // response time requirement.
         if (await Promise.all([verifyPromise, lambdaPromise])) {
+          lambdaPromise.then(result => {
+            logger.info(`Lambda result: ${JSON.stringify(result)}`);
+            return result;
+          })
+          // return {
+          //   type: 4,
+          //   data: {
+          //     content: `Hey there, ${(event.jsonBody.member ? event.jsonBody.member.user.global_name : "INSERT_PEASANT_NAME")}`
+          //   }
+          //
+          // }
           return {
             type: 5,
           };
         }
+
+        logger.error(`We shouldn't make it here, right?`);
+
         break;
     }
   }

@@ -1,5 +1,5 @@
-import {Duration} from 'aws-cdk-lib';
-import {Function, Runtime} from 'aws-cdk-lib/aws-lambda';
+import {Duration, Stack} from 'aws-cdk-lib';
+import {Function, LayerVersion, Runtime} from 'aws-cdk-lib/aws-lambda';
 import {Cors, LambdaIntegration, RequestValidator, RestApi} from 'aws-cdk-lib/aws-apigateway';
 import {NodejsFunction} from 'aws-cdk-lib/aws-lambda-nodejs';
 import {Secret} from 'aws-cdk-lib/aws-secretsmanager';
@@ -38,13 +38,30 @@ export class DiscordBotConstruct extends Construct {
     // Create the Lambda for handling Interactions from our Discord bot.
     const discordBotLambda = new NodejsFunction(this, 'discord-bot-lambda', {
       runtime: Runtime.NODEJS_18_X,
-      entry: path.join(__dirname, '../functions/DiscordBotFunction.js'),
+      entry: path.join(__dirname, '../functions/DiscordBotFunction.ts'),
       handler: 'handler',
+      logRetention: 1,
       environment: {
         DISCORD_BOT_API_KEY_NAME: this.discordAPISecrets.secretName,
         COMMAND_LAMBDA_ARN: props.commandsLambdaFunction.functionArn,
       },
       timeout: Duration.seconds(3),
+      bundling: {
+        externalModules: [
+          '@aws-lambda-powertools/commons',
+          '@aws-lambda-powertools/logger',
+          '@aws-lambda-powertools/tracer',
+          '@aws-lambda-powertools/metrics',
+          '@aws-lambda-powertools/parameters',
+        ],
+      },
+      layers: [LayerVersion.fromLayerVersionArn(
+        this,
+        'powertools-layer',
+        `arn:aws:lambda:${
+          Stack.of(this).region
+        }:094274105915:layer:AWSLambdaPowertoolsTypeScript:27`
+      )]
     });
     props.commandsLambdaFunction.addEnvironment(
         'DISCORD_BOT_API_KEY_NAME', this.discordAPISecrets.secretName);
