@@ -9,7 +9,7 @@ import { logger } from './common/powertools';
 
 const lambda = new Lambda();
 
-const SERVER_ROLE = "1203108322551664690";
+const SERVER_ROLE = "SPECIAL_ROLE_ID-find-this-from-logs";
 
 function isValidPlayer(event: IDiscordEventRequest) {
 
